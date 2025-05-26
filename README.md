@@ -2,6 +2,10 @@
 
 This project was scaffolded without internet access. It sets up a basic **Next.js** app using the modern `app/` router, **TypeScript**, and **Tailwind CSS**.
 
+The site promotes responsible AI adoption for enterprises and small businesses. It includes a home page with a short overview and a services page describing how we can help with data protection, workflow integration, telemetry and ROI projections.
+
+**Disclaimer:** Generative AI can produce incorrect or misleading content, so results should always be reviewed by humans.
+
 ## Setup
 
 1. Install dependencies:

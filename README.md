@@ -21,3 +21,9 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to see the app. The home page displays a heading styled with Tailwind to confirm the setup is working.
+
+## Contact form and Slack integration
+
+A `/contact` page allows visitors to send inquiries that are posted to a Slack channel via an incoming webhook. Set `SLACK_WEBHOOK_URL` in a `.env.local` file with your Slack webhook URL.
+
+When an inquiry arrives after business hours you can configure Slack workflows or third–party automations (e.g. Twilio or SendGrid) to email or text the visitor directly. The API endpoint at `/api/contact` can be extended with additional fetch calls to your messaging service of choice.

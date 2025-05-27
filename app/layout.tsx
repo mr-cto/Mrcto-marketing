@@ -1,6 +1,7 @@
 import '../styles/globals.css'
 import { ReactNode } from 'react'
 import Nav from '../components/Nav'
+import SlackChatButton from '../components/SlackChatButton'
 
 export const metadata = {
   title: 'Mrcto Marketing',
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-screen bg-gray-100 text-gray-800">
         <Nav />
         {children}
+        <SlackChatButton />
       </body>
     </html>
   )

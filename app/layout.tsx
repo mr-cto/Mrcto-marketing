@@ -1,6 +1,7 @@
 import '../styles/globals.css'
 import { ReactNode } from 'react'
 import Nav from '../components/Nav'
+import Analytics from '../components/Analytics'
 
 export const metadata = {
   title: 'Mrcto Marketing',
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body className="min-h-screen bg-gray-100 text-gray-800">
         <Nav />
+        <Analytics />
         {children}
       </body>
     </html>

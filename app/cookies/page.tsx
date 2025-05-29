@@ -244,7 +244,7 @@ export default function Cookies() {
                 </p>
                 <div className="bg-green-50 rounded-2xl p-6 mb-8">
                   <p className="text-green-700 font-medium">
-                    Email: cookies@aimagic.com
+                    Email: t@mrcto.ai
                   </p>
                   <p className="text-green-700 font-medium">
                     Address: The Enchanted Forest, Cookie Grove

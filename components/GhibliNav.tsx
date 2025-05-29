@@ -41,6 +41,7 @@ export default function GhibliNav() {
         <div className="hidden md:flex items-center space-x-8">
           <NavLink href="/" label="Home" />
           <NavLink href="/services" label="Services" />
+          <NavLink href="/pricing" label="Pricing" />
           <NavLink href="/contact" label="Contact" />
 
           <button className="ghibli-button primary text-sm">

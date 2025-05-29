@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import DOMPurify from "isomorphic-dompurify";
 import GhibliTotoro from "./GhibliTotoro";
 import GhibliDustBunny from "./GhibliDustBunny";
 
@@ -88,6 +89,24 @@ const clearSession = () => {
   }
 };
 
+// Simple markdown parser for basic formatting
+const parseMarkdown = (text: string): string => {
+  return (
+    text
+      // Bold text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      // Italic text
+      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      // Code blocks
+      .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 rounded">$1</code>')
+      // Line breaks
+      .replace(/\n/g, "<br>")
+      // Lists (simple)
+      .replace(/^- (.*)$/gm, "<li>$1</li>")
+      .replace(/(<li>.*<\/li>)/g, '<ul class="list-disc ml-4">$1</ul>')
+  );
+};
+
 export default function GhibliChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [sessionId] = useState(() => generateSessionId());
@@ -117,7 +136,16 @@ export default function GhibliChatWidget() {
   });
   const [showContactForm, setShowContactForm] = useState(false);
   const [showActionButtons, setShowActionButtons] = useState(false);
+  const [actionButtons, setActionButtons] = useState<
+    Array<{
+      text: string;
+      action: "continue" | "connect" | "schedule" | "learn_more" | "pricing";
+      style: "primary" | "secondary";
+    }>
+  >([]);
   const [extractedInfo, setExtractedInfo] = useState<any>({});
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [isInactive, setIsInactive] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<
     Array<{ role: "user" | "assistant"; content: string }>
   >(() => {
@@ -130,9 +158,92 @@ export default function GhibliChatWidget() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Reset session for fresh complexity calculation
+  const resetSession = () => {
+    const newSessionId = generateSessionId();
+    const initialMessage = {
+      id: "1",
+      text: "Hello! I'm Totoro, your magical AI guide! 🌳✨ I'd love to help you calculate your project complexity and find the perfect AI solution for your business. What kind of business processes are you hoping to improve with AI?",
+      isUser: false,
+      timestamp: new Date(),
+    };
+
+    setMessages([initialMessage]);
+    setConversationHistory([]);
+    setExtractedInfo({});
+    setUserInfo({});
+    setShowContactForm(false);
+    setShowActionButtons(false);
+    setActionButtons([]);
+    setLastActivity(Date.now());
+    setIsInactive(false);
+
+    // Clear session storage
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(CHAT_SESSION_KEY);
+      }
+    } catch (error) {
+      console.error("Failed to clear session:", error);
+    }
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Listen for complexity assessment events from pricing page
+  useEffect(() => {
+    const handleComplexityAssessment = () => {
+      resetSession();
+      setIsOpen(true); // Open the chat widget
+      // Add the initial complexity message after reset
+      setTimeout(() => {
+        addMessage(
+          "Hello! I'm Totoro, your magical AI guide! 🌳✨ I'd love to help you calculate your project complexity and find the perfect AI solution for your business. What kind of business processes are you hoping to improve with AI?",
+          false
+        );
+      }, 100);
+    };
+
+    window.addEventListener(
+      "startComplexityAssessment",
+      handleComplexityAssessment
+    );
+
+    return () => {
+      window.removeEventListener(
+        "startComplexityAssessment",
+        handleComplexityAssessment
+      );
+    };
+  }, []);
+
+  // Track user activity and handle inactivity
+  useEffect(() => {
+    const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+
+    const checkInactivity = () => {
+      const now = Date.now();
+      if (
+        now - lastActivity > INACTIVITY_TIMEOUT &&
+        !isInactive &&
+        messages.length > 1
+      ) {
+        setIsInactive(true);
+        handleInactivityArchive();
+      }
+    };
+
+    const interval = setInterval(checkInactivity, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [lastActivity, isInactive, messages.length]);
+
+  // Update activity timestamp on user interactions
+  const updateActivity = () => {
+    setLastActivity(Date.now());
+    setIsInactive(false);
+  };
 
   // Save session to localStorage whenever state changes
   useEffect(() => {
@@ -152,6 +263,48 @@ export default function GhibliChatWidget() {
     if (!session) {
       clearSession();
     }
+
+    // Helper function to send a message programmatically
+    const sendMessageProgrammatically = async (message: string) => {
+      updateActivity();
+      addMessage(message, true);
+      await generateAIResponse(message);
+    };
+
+    // Listen for complexity assessment trigger
+    const handleComplexityAssessment = () => {
+      // Clear current session and start fresh
+      clearSession();
+      setMessages([]);
+      setConversationHistory([]);
+      setUserInfo({});
+      setIsOpen(true);
+      // Don't send automatic message - let user start fresh
+    };
+
+    // Listen for general chat opening with message
+    const handleOpenChat = (event: CustomEvent) => {
+      setIsOpen(true);
+      if (event.detail?.message) {
+        setTimeout(() => {
+          sendMessageProgrammatically(event.detail.message);
+        }, 500);
+      }
+    };
+
+    window.addEventListener(
+      "startComplexityAssessment",
+      handleComplexityAssessment
+    );
+    window.addEventListener("openChat", handleOpenChat as EventListener);
+
+    return () => {
+      window.removeEventListener(
+        "startComplexityAssessment",
+        handleComplexityAssessment
+      );
+      window.removeEventListener("openChat", handleOpenChat as EventListener);
+    };
   }, []);
 
   const addMessage = (text: string, isUser: boolean) => {
@@ -190,12 +343,9 @@ export default function GhibliChatWidget() {
         ];
         setConversationHistory(newHistory.slice(-10)); // Keep last 10 messages
 
-        // Show action buttons if suggested by AI
-        if (data.shouldShowActionButtons) {
-          setShowActionButtons(true);
-          if (data.extractedInfo) {
-            setExtractedInfo(data.extractedInfo);
-          }
+        // Store extracted info if provided by AI
+        if (data.extractedInfo) {
+          setExtractedInfo(data.extractedInfo);
         }
       } else {
         throw new Error("Failed to get AI response");
@@ -213,8 +363,25 @@ export default function GhibliChatWidget() {
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
-    addMessage(inputValue, true);
-    const userMessage = inputValue;
+    const userMessage = inputValue.trim();
+
+    // Check if user wants to calculate complexity - reset session for fresh start
+    if (
+      userMessage.toLowerCase().includes("calculate") &&
+      (userMessage.toLowerCase().includes("complexity") ||
+        userMessage.toLowerCase().includes("cost") ||
+        userMessage.toLowerCase().includes("price"))
+    ) {
+      resetSession();
+      // Add the user's message after reset
+      addMessage(userMessage, true);
+      setInputValue("");
+      await generateAIResponse(userMessage);
+      return;
+    }
+
+    updateActivity();
+    addMessage(userMessage, true);
     setInputValue("");
 
     await generateAIResponse(userMessage);
@@ -224,6 +391,65 @@ export default function GhibliChatWidget() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const handleInactivityArchive = async () => {
+    try {
+      await fetch("/api/submit-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          extractedInfo,
+          conversationHistory,
+          sessionId,
+          reason: "inactivity_archive",
+        }),
+      });
+
+      addMessage(
+        "I notice you've been away for a while! 🌸 I've saved our conversation in case you'd like to continue later. Feel free to reach out anytime!",
+        false
+      );
+    } catch (error) {
+      console.error("Failed to archive inactive conversation:", error);
+    }
+  };
+
+  const handleActionButton = async (action: string, buttonText: string) => {
+    updateActivity();
+    setShowActionButtons(false);
+
+    // Add user's choice as a message
+    addMessage(buttonText, true);
+
+    switch (action) {
+      case "connect":
+        await handleSubmitLead();
+        break;
+      case "schedule":
+        addMessage(
+          "I'd love to schedule a consultation! Let me connect you with our team to find the perfect time. ✨",
+          false
+        );
+        await handleSubmitLead();
+        break;
+      case "pricing":
+        addMessage("I'd like to learn more about pricing and options.", true);
+        await generateAIResponse(
+          "I'd like to learn more about pricing and options."
+        );
+        break;
+      case "learn_more":
+        addMessage("I'd like to learn more about your services.", true);
+        await generateAIResponse("I'd like to learn more about your services.");
+        break;
+      case "continue":
+        // Just continue the conversation naturally
+        await generateAIResponse(buttonText);
+        break;
+      default:
+        await generateAIResponse(buttonText);
     }
   };
 
@@ -279,6 +505,7 @@ export default function GhibliChatWidget() {
     setUserInfo({});
     setShowContactForm(false);
     setShowActionButtons(false);
+    setActionButtons([]);
     setExtractedInfo({});
   };
 
@@ -328,259 +555,274 @@ export default function GhibliChatWidget() {
 
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 z-50 group"
-      >
-        <div className="flex items-center space-x-2">
-          <GhibliTotoro
-            size="small"
-            variant="blue"
-            className="animate-float-slow"
-          />
-          <span className="hidden group-hover:block text-sm font-medium">
-            Chat with Totoro
-          </span>
+      <>
+        {/* Floating Connect Button - always visible */}
+        <div className="fixed bottom-6 left-6 z-40">
+          <button
+            onClick={() => handleActionButton("connect", "Connect with Team")}
+            className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-sm font-medium"
+          >
+            <span className="text-lg">✨</span>
+            Connect with Team
+          </button>
         </div>
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-      </button>
-    );
-  }
 
-  return (
-    <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-white rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden border-4 border-green-200">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-4 text-white relative">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+        {/* Chat Widget Button */}
+        <button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 z-50 group"
+        >
+          <div className="flex items-center space-x-2">
             <GhibliTotoro
               size="small"
               variant="blue"
               className="animate-float-slow"
             />
-            <div>
-              <h3 className="font-bold text-lg">Totoro AI Assistant</h3>
-              <p className="text-green-100 text-sm">Your magical AI guide</p>
-            </div>
+            <span className="hidden group-hover:block text-sm font-medium">
+              Chat with Totoro
+            </span>
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={clearChatSession}
-              className="text-white hover:text-green-200 text-sm px-2 py-1 rounded hover:bg-green-600 transition-colors"
-              title="Clear chat history"
-            >
-              🗑️
-            </button>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-white hover:text-green-200 text-xl font-bold"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-        <GhibliDustBunny
-          className="absolute top-2 right-12 opacity-30 animate-float-medium"
-          size="small"
-        />
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* Floating Connect Button - visible when chat is open */}
+      <div className="fixed bottom-6 left-6 z-40">
+        <button
+          onClick={() => handleActionButton("connect", "Connect with Team")}
+          className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-sm font-medium"
+        >
+          <span className="text-lg">✨</span>
+          Connect with Team
+        </button>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-green-50 to-blue-50">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${
-              message.isUser ? "justify-end" : "justify-start"
-            }`}
-          >
+      {/* Chat Widget */}
+      <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-white rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden border-4 border-green-200">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-4 text-white relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <GhibliTotoro
+                size="small"
+                variant="blue"
+                className="animate-float-slow"
+              />
+              <div>
+                <h3 className="font-bold text-lg">Totoro AI Assistant</h3>
+                <p className="text-green-100 text-sm">Your magical AI guide</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={clearChatSession}
+                className="text-white hover:text-green-200 text-sm px-2 py-1 rounded hover:bg-green-600 transition-colors"
+                title="Clear chat history"
+              >
+                🗑️
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-white hover:text-green-200 text-xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <GhibliDustBunny
+            className="absolute top-2 right-12 opacity-30 animate-float-medium"
+            size="small"
+          />
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-green-50 to-blue-50">
+          {messages.map((message) => (
             <div
-              className={`max-w-[80%] p-3 rounded-2xl ${
-                message.isUser
-                  ? "bg-green-500 text-white"
-                  : "bg-white text-green-800 shadow-md border border-green-100"
+              key={message.id}
+              className={`flex ${
+                message.isUser ? "justify-end" : "justify-start"
               }`}
             >
-              <p className="text-sm leading-relaxed">{message.text}</p>
-              <p
-                className={`text-xs mt-1 ${
-                  message.isUser ? "text-green-100" : "text-green-500"
+              <div
+                className={`max-w-[80%] p-3 rounded-2xl ${
+                  message.isUser
+                    ? "bg-green-500 text-white"
+                    : "bg-white text-green-800 shadow-md border border-green-100"
                 }`}
               >
-                {message.timestamp.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </p>
-            </div>
-          </div>
-        ))}
-
-        {isTyping && (
-          <div className="flex justify-start">
-            <div className="bg-white text-green-800 p-3 rounded-2xl shadow-md border border-green-100">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
-                <div
-                  className="w-2 h-2 bg-green-500 rounded-full animate-bounce"
-                  style={{ animationDelay: "0.1s" }}
-                ></div>
-                <div
-                  className="w-2 h-2 bg-green-500 rounded-full animate-bounce"
-                  style={{ animationDelay: "0.2s" }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        {showActionButtons && (
-          <div className="flex justify-center">
-            <div className="bg-white p-4 rounded-2xl shadow-md border border-green-100 max-w-sm">
-              <div className="text-center mb-3">
-                <p className="text-green-800 text-sm font-medium">
-                  {Object.keys(extractedInfo).length > 0
-                    ? "I've gathered some information from our chat. Ready to connect with our team?"
-                    : "Would you like to connect with our team for personalized assistance?"}
+                <div className="text-sm leading-relaxed">
+                  {message.text
+                    .split("\n\n**Question:**")
+                    .map((part, index) => (
+                      <div key={index}>
+                        {index === 0 ? (
+                          <div
+                            dangerouslySetInnerHTML={{
+                              __html: DOMPurify.sanitize(parseMarkdown(part)),
+                            }}
+                          />
+                        ) : (
+                          <div className="mt-3 p-2 bg-green-50 border-l-4 border-green-500 rounded">
+                            <p className="font-semibold text-green-700">
+                              Question:
+                            </p>
+                            <div
+                              className="text-green-800"
+                              dangerouslySetInnerHTML={{
+                                __html: DOMPurify.sanitize(parseMarkdown(part)),
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+                <p
+                  className={`text-xs mt-1 ${
+                    message.isUser ? "text-green-100" : "text-green-500"
+                  }`}
+                >
+                  {message.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
-                {Object.keys(extractedInfo).length > 0 && (
-                  <div className="mt-2 text-xs text-green-600 bg-green-50 p-2 rounded-lg">
-                    {extractedInfo.name && <div>👤 {extractedInfo.name}</div>}
-                    {extractedInfo.email && <div>📧 {extractedInfo.email}</div>}
-                    {extractedInfo.company && (
-                      <div>🏢 {extractedInfo.company}</div>
-                    )}
-                    {extractedInfo.phone && <div>📞 {extractedInfo.phone}</div>}
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={handleSubmitLead}
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 px-4 rounded-xl hover:shadow-lg transition-all duration-300 font-medium text-sm"
-                >
-                  Yes, Connect Me! ✨
-                </button>
-                <button
-                  onClick={handleNotReady}
-                  className="border-2 border-green-500 text-green-600 py-2 px-4 rounded-xl hover:bg-green-50 transition-all duration-300 font-medium text-sm"
-                >
-                  Not Ready Yet 🌸
-                </button>
               </div>
             </div>
+          ))}
+
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="bg-white text-green-800 p-3 rounded-2xl shadow-md border border-green-100">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
+                  <div
+                    className="w-2 h-2 bg-green-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.1s" }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-green-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Contact Form Modal */}
+        {showContactForm && (
+          <div className="absolute inset-0 bg-white z-10 p-4 overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-green-800">
+                Let's Connect! 🌟
+              </h3>
+              <button
+                onClick={() => setShowContactForm(false)}
+                className="text-green-600 hover:text-green-800 text-xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleContactSubmit} className="space-y-4">
+              <div>
+                <label className="block text-green-700 font-medium mb-1 text-sm">
+                  Name *
+                </label>
+                <input
+                  name="name"
+                  required
+                  className="w-full border-2 border-green-200 p-2 rounded-xl focus:border-green-500 focus:outline-none text-sm"
+                  placeholder="Your name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-green-700 font-medium mb-1 text-sm">
+                  Email *
+                </label>
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  className="w-full border-2 border-green-200 p-2 rounded-xl focus:border-green-500 focus:outline-none text-sm"
+                  placeholder="your@email.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-green-700 font-medium mb-1 text-sm">
+                  Company
+                </label>
+                <input
+                  name="company"
+                  className="w-full border-2 border-green-200 p-2 rounded-xl focus:border-green-500 focus:outline-none text-sm"
+                  placeholder="Your company"
+                />
+              </div>
+
+              <div>
+                <label className="block text-green-700 font-medium mb-1 text-sm">
+                  How can we help?
+                </label>
+                <textarea
+                  name="message"
+                  className="w-full border-2 border-green-200 p-2 rounded-xl focus:border-green-500 focus:outline-none text-sm h-20 resize-none"
+                  placeholder="Tell us about your AI needs..."
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 px-4 rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
+              >
+                Send Message ✨
+              </button>
+            </form>
           </div>
         )}
 
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Contact Form Modal */}
-      {showContactForm && (
-        <div className="absolute inset-0 bg-white z-10 p-4 overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-green-800">
-              Let's Connect! 🌟
-            </h3>
+        {/* Input */}
+        <div className="p-4 border-t border-green-200 bg-white">
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask Totoro about AI magic..."
+              className="flex-1 border-2 border-green-200 p-2 rounded-xl focus:border-green-500 focus:outline-none text-sm"
+            />
             <button
-              onClick={() => setShowContactForm(false)}
-              className="text-green-600 hover:text-green-800 text-xl font-bold"
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim()}
+              className="bg-green-500 text-white p-2 rounded-xl hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              ×
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
+              </svg>
             </button>
           </div>
-
-          <form onSubmit={handleContactSubmit} className="space-y-4">
-            <div>
-              <label className="block text-green-700 font-medium mb-1 text-sm">
-                Name *
-              </label>
-              <input
-                name="name"
-                required
-                className="w-full border-2 border-green-200 p-2 rounded-xl focus:border-green-500 focus:outline-none text-sm"
-                placeholder="Your name"
-              />
-            </div>
-
-            <div>
-              <label className="block text-green-700 font-medium mb-1 text-sm">
-                Email *
-              </label>
-              <input
-                name="email"
-                type="email"
-                required
-                className="w-full border-2 border-green-200 p-2 rounded-xl focus:border-green-500 focus:outline-none text-sm"
-                placeholder="your@email.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-green-700 font-medium mb-1 text-sm">
-                Company
-              </label>
-              <input
-                name="company"
-                className="w-full border-2 border-green-200 p-2 rounded-xl focus:border-green-500 focus:outline-none text-sm"
-                placeholder="Your company"
-              />
-            </div>
-
-            <div>
-              <label className="block text-green-700 font-medium mb-1 text-sm">
-                How can we help?
-              </label>
-              <textarea
-                name="message"
-                className="w-full border-2 border-green-200 p-2 rounded-xl focus:border-green-500 focus:outline-none text-sm h-20 resize-none"
-                placeholder="Tell us about your AI needs..."
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 px-4 rounded-xl hover:shadow-lg transition-all duration-300 font-medium"
-            >
-              Send Message ✨
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* Input */}
-      <div className="p-4 border-t border-green-200 bg-white">
-        <div className="flex space-x-2">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask Totoro about AI magic..."
-            className="flex-1 border-2 border-green-200 p-2 rounded-xl focus:border-green-500 focus:outline-none text-sm"
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim()}
-            className="bg-green-500 text-white p-2 rounded-xl hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-              />
-            </svg>
-          </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }

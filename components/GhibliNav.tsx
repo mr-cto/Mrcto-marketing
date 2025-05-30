@@ -44,7 +44,13 @@ export default function GhibliNav() {
           <NavLink href="/pricing" label="Pricing" />
           <NavLink href="/contact" label="Contact" />
 
-          <button className="ghibli-button primary text-sm">
+          <button
+            onClick={() => {
+              // Navigate to pricing page to start their journey
+              window.location.href = "/pricing";
+            }}
+            className="ghibli-button primary text-sm"
+          >
             Start Journey
           </button>
         </div>
@@ -99,11 +105,23 @@ export default function GhibliNav() {
             onClick={() => setIsMenuOpen(false)}
           />
           <MobileNavLink
+            href="/pricing"
+            label="Pricing"
+            onClick={() => setIsMenuOpen(false)}
+          />
+          <MobileNavLink
             href="/contact"
             label="Contact"
             onClick={() => setIsMenuOpen(false)}
           />
-          <button className="ghibli-button primary w-full text-sm">
+          <button
+            onClick={() => {
+              // Navigate to pricing page to start their journey
+              window.location.href = "/pricing";
+              setIsMenuOpen(false);
+            }}
+            className="ghibli-button primary w-full text-sm"
+          >
             Start Journey
           </button>
         </div>

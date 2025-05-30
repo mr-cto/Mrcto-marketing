@@ -248,10 +248,36 @@ export default function Contact() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-6 justify-center animate-fade-in-up animation-delay-600">
-              <button className="ghibli-button primary text-lg">
+              <button
+                onClick={() => {
+                  // Open chat widget with consultation message
+                  window.dispatchEvent(
+                    new CustomEvent("openChat", {
+                      detail: {
+                        message:
+                          "I'd like to schedule a free consultation to discuss my AI needs.",
+                      },
+                    })
+                  );
+                }}
+                className="ghibli-button primary text-lg"
+              >
                 Schedule Free Consultation
               </button>
-              <button className="ghibli-button secondary text-lg">
+              <button
+                onClick={() => {
+                  // Open chat widget with AI guide request
+                  window.dispatchEvent(
+                    new CustomEvent("openChat", {
+                      detail: {
+                        message:
+                          "I'd like to download your AI guide to learn more about AI solutions.",
+                      },
+                    })
+                  );
+                }}
+                className="ghibli-button secondary text-lg"
+              >
                 Download AI Guide
               </button>
             </div>

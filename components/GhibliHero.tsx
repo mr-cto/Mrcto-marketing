@@ -90,10 +90,22 @@ export default function GhibliHero() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up animation-delay-900">
-            <button className="ghibli-button primary">
+            <button
+              onClick={() => {
+                // Navigate to pricing page to start their journey
+                window.location.href = "/pricing";
+              }}
+              className="ghibli-button primary"
+            >
               Begin Your Journey
             </button>
-            <button className="ghibli-button secondary">
+            <button
+              onClick={() => {
+                // Navigate to services page to discover what we offer
+                window.location.href = "/services";
+              }}
+              className="ghibli-button secondary"
+            >
               Discover Our Magic
             </button>
           </div>

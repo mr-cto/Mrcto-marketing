@@ -557,7 +557,7 @@ export default function GhibliChatWidget() {
     return (
       <>
         {/* Floating Connect Button - always visible */}
-        <div className="fixed bottom-6 left-6 z-40">
+        {/* <div className="fixed bottom-6 left-6 z-40">
           <button
             onClick={() => handleActionButton("connect", "Connect with Team")}
             className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-sm font-medium"
@@ -565,7 +565,7 @@ export default function GhibliChatWidget() {
             <span className="text-lg">✨</span>
             Connect with Team
           </button>
-        </div>
+        </div> */}
 
         {/* Chat Widget Button */}
         <button
@@ -591,7 +591,7 @@ export default function GhibliChatWidget() {
   return (
     <>
       {/* Floating Connect Button - visible when chat is open */}
-      <div className="fixed bottom-6 left-6 z-40">
+      {/* <div className="fixed bottom-6 left-6 z-40">
         <button
           onClick={() => handleActionButton("connect", "Connect with Team")}
           className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 text-sm font-medium"
@@ -599,7 +599,7 @@ export default function GhibliChatWidget() {
           <span className="text-lg">✨</span>
           Connect with Team
         </button>
-      </div>
+      </div> */}
 
       {/* Chat Widget */}
       <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-white rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden border-4 border-green-200">

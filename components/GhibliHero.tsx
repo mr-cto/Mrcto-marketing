@@ -78,35 +78,28 @@ export default function GhibliHero() {
       <div className="relative z-10 flex items-center justify-center min-h-screen px-6">
         <div className="text-center max-w-4xl">
           <h1 className="text-6xl md:text-8xl font-bold text-green-800 mb-6 animate-fade-in-up font-serif">
-            AI Magic
+            Ship AI Products in Days, Not Months
           </h1>
           <h2 className="text-2xl md:text-4xl text-green-700 mb-8 animate-fade-in-up animation-delay-300 font-light">
-            Transforming Organizations with Wonder
+            17 autonomous AI agents. No humans. No delays. Production-ready in 1–2 weeks.
           </h2>
-          <p className="text-lg md:text-xl text-green-600 mb-12 max-w-2xl mx-auto leading-relaxed animate-fade-in-up animation-delay-600">
-            Like the gentle magic of Studio Ghibli films, we bring AI solutions
-            that feel natural, intuitive, and transformative to your
-            organization.
-          </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up animation-delay-900">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up animation-delay-600">
             <button
               onClick={() => {
-                // Navigate to pricing page to start their journey
                 window.location.href = "/pricing";
               }}
               className="ghibli-button primary"
             >
-              Begin Your Journey
+              Start Your Project
             </button>
             <button
               onClick={() => {
-                // Navigate to services page to discover what we offer
                 window.location.href = "/services";
               }}
               className="ghibli-button secondary"
             >
-              Discover Our Magic
+              See What We Build
             </button>
           </div>
         </div>

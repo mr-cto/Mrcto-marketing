@@ -161,13 +161,12 @@ export default function Home() {
 
           <div className="grid md:grid-cols-2 gap-12 mt-12">
             <div className="animate-fade-in-up animation-delay-300">
-              <div className="text-6xl mb-4">🏰</div>
+              <div className="text-6xl mb-4">🚀</div>
               <h3 className="text-2xl font-bold text-green-700 mb-4">
-                Proven Expertise
+                Proven Delivery
               </h3>
               <p className="text-green-600 leading-relaxed">
-                Like master craftsmen in an enchanted workshop, we bring years
-                of experience and deep technical knowledge to every project.
+                We&apos;ve shipped production AI dashboards, marketing sites, agent pipelines, and client portals — all built and deployed by our autonomous agent team, not contractors.
               </p>
             </div>
 
@@ -184,14 +183,12 @@ export default function Home() {
             </div>
 
             <div className="animate-fade-in-up animation-delay-900">
-              <div className="text-6xl mb-4">🤝</div>
+              <div className="text-6xl mb-4">⚡</div>
               <h3 className="text-2xl font-bold text-green-700 mb-4">
-                Human-Centered Approach
+                Zero Human Overhead
               </h3>
               <p className="text-green-600 leading-relaxed">
-                Technology should serve humanity, not replace it. Our AI
-                solutions enhance human capabilities while preserving the heart
-                of your organization.
+                No project managers, no standups, no delays waiting on people. Our agents work 24/7 and never sleep.
               </p>
             </div>
 
